@@ -3,17 +3,17 @@ const path = require('path');
 const fs = require("fs");
 const util = require("util");
 
-var exp = express();
-var PORT = process.env.PORT || 80;
+const app = express();
+const PORT = process.env.PORT || 8080;
 
-exp.use(express.urlencoded({extended: true}));
-exp.use(express.json());
-exp.use(express.static(__dirname + '/public'));
+app.use(express.urlencoded({extended: true}));
+app.use(express.json());
+app.use(express.static('public'));
 
 const writeFileAsync = util.promisify(fs.writeFile);
 const readFileAsync = util.promisify(fs.readFile);
 
-exp.get("/", function(req,res) {
+app.get("/", function(req,res) {
     res.sendFile(path.join(__dirname, '/public/index.html'), err =>{
         if(err){
             console.error("Could not get public/notes.html file, ", err);
@@ -22,7 +22,17 @@ exp.get("/", function(req,res) {
     });
 });
 
-exp.get("/api/notes", async (req, res) => {
+app.get("/notes", function(req,res) {
+    res.sendFile(path.join(__dirname, '/public/notes.html'), err =>{
+        if(err){
+            console.error("Could not get public/notes.html file, ", err);
+            res.sendStatus(400);
+        }
+    });
+});
+
+
+app.get("/api/notes", async (req, res) => {
     try{
         let noteList = await readFileAsync(path.join(__dirname, "./db/db.json"), "utf8");
         console.log(JSON.parse(noteList));
@@ -40,10 +50,9 @@ exp.get("/api/notes", async (req, res) => {
     }
 });
 
-exp.get("/api/notes/:id", async (req, res) =>{
+app.post("/api/notes", async (req, res) =>{
     try{
-        let objectToShow = req.params;
-        let idToShow = parseInt(objectToShow.id);
+        let noteToAdd = req.body;
         let noteList = await readFileAsync(path.join(__dirname, "./db/db.json"), "utf8");
         if(!noteList){
             noteList = [];
@@ -55,7 +64,7 @@ exp.get("/api/notes/:id", async (req, res) =>{
         noteToAdd.id = noteList.length + 1;
         noteList.push(noteToAdd);
         await writeFileAsync(path.join(__dirname, "./db/db.json"), JSON.stringify(noteList));
-        return res.json(200);
+        return res.json(noteToAdd);
     }
     catch (e) {
         console.log('error : ' + e);
@@ -63,7 +72,7 @@ exp.get("/api/notes/:id", async (req, res) =>{
     }
 });
 
-exp.delete("/api/notes/:id", async (req, res) => {
+app.delete("/api/notes/:id", async (req, res) => {
     try{
         let objectToDelete = req.params;
         let idToDelete = parseInt(objectToDelete.id);
@@ -91,6 +100,6 @@ exp.delete("/api/notes/:id", async (req, res) => {
     }
 });
 
-exp.listen(PORT, function() {
-    console.log('App listening on PORT ${PORT}');
+app.listen(PORT, () => {
+    console.log(`App listening on PORT ${PORT}`);
 });
